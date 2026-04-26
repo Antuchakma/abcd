@@ -1,0 +1,338 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  fullName   String
+  email      String    @unique
+  password   String
+  role       Role
+  avatarUrl  String?
+  createdAt  DateTime  @default(now())
+
+  doctor        Doctor?
+  patient       Patient?
+  notifications Notification[]
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  title     String
+  body      String
+  type      String
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+}
+
+model Doctor {
+  id             Int       @id @default(autoincrement())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         Int       @unique
+  specialization String
+  licenseNumber  String
+  hospitalName   String
+  bio            String    @default("")
+  isApproved     Boolean   @default(false)
+  maxDailyVisits Int       @default(20)
+
+  prescriptions       Prescription[]
+  medicalReports      MedicalReport[]
+  connections         DoctorPatient[]
+  appointments        Appointment[]
+  appointmentRequests AppointmentRequest[]
+  specialties         DoctorSpecialty[]
+  hospitalHistory     DoctorHospitalHistory[]
+  degrees             DoctorDegree[]
+  achievements        DoctorAchievement[]
+  paymentMethods      DoctorPaymentMethod[]
+}
+
+model DoctorSpecialty {
+  id        Int      @id @default(autoincrement())
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorId  Int
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([doctorId, name])
+}
+
+model DoctorHospitalHistory {
+  id           Int       @id @default(autoincrement())
+  doctor       Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorId     Int
+  hospitalName String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model DoctorDegree {
+  id          Int      @id @default(autoincrement())
+  doctor      Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorId    Int
+  title       String
+  institution String?
+  year        Int?
+  createdAt   DateTime @default(now())
+}
+
+model DoctorAchievement {
+  id          Int      @id @default(autoincrement())
+  doctor      Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorId    Int
+  title       String
+  description String?
+  year        Int?
+  createdAt   DateTime @default(now())
+}
+
+model Patient {
+  id             Int       @id @default(autoincrement())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         Int       @unique
+  dateOfBirth    DateTime
+  gender         String
+  bloodGroup     String
+
+  prescriptions       Prescription[]
+  medicalHistory      PatientMedicalHistory[]
+  medicalReports      MedicalReport[]
+  chatMessages        ChatMessage[]
+  connections         DoctorPatient[]
+  appointments        Appointment[]
+  healthMetrics       HealthMetric[]
+  appointmentRequests AppointmentRequest[]
+}
+
+model AppointmentRequest {
+  id        Int                      @id @default(autoincrement())
+  doctor    Doctor                   @relation(fields: [doctorId], references: [id])
+  doctorId  Int
+  patient   Patient                  @relation(fields: [patientId], references: [id])
+  patientId Int
+  cause     String
+  notes     String?
+  status    AppointmentRequestStatus @default(PENDING)
+  createdAt DateTime                 @default(now())
+
+  visit     Appointment?
+}
+
+model DoctorPatient {
+  id        Int              @id @default(autoincrement())
+  doctor    Doctor           @relation(fields: [doctorId], references: [id])
+  doctorId  Int
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  patientId Int
+  status    ConnectionStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+
+  @@unique([doctorId, patientId])
+}
+
+model Appointment {
+  id           Int         @id @default(autoincrement())
+  doctor       Doctor      @relation(fields: [doctorId], references: [id])
+  doctorId     Int
+  patient      Patient     @relation(fields: [patientId], references: [id])
+  patientId    Int
+  request      AppointmentRequest? @relation(fields: [requestId], references: [id])
+  requestId    Int?        @unique
+  cause        String      @default("")
+  notes        String?
+  visitDate    DateTime    @default(now())
+  serialNumber Int         @default(1)
+  status       VisitStatus @default(SCHEDULED)
+  createdAt    DateTime    @default(now())
+
+  prescription  Prescription?
+  healthMetrics HealthMetric[]
+  reports       MedicalReport[]
+  payment       Payment?
+}
+
+model DoctorPaymentMethod {
+  id        Int               @id @default(autoincrement())
+  doctor    Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorId  Int
+  type      PaymentMethodType
+  number    String
+  label     String?
+  isActive  Boolean           @default(true)
+  createdAt DateTime          @default(now())
+
+  @@unique([doctorId, type, number])
+}
+
+model Payment {
+  id                  Int           @id @default(autoincrement())
+  appointment         Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId       Int           @unique
+  doctorId            Int
+  patientId           Int
+  amount              Int
+  status              PaymentStatus @default(PENDING)
+  selectedMethodType  PaymentMethodType?
+  selectedMethodNumber String?
+  patientTxnId        String?
+  receiptNumber       String?       @unique
+  submittedAt         DateTime?
+  paidAt              DateTime?
+  waivedAt            DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model Medicine {
+  id            Int       @id @default(autoincrement())
+  name          String
+  manufacturer  String
+  description   String
+
+  prescriptions PrescriptionMedicine[]
+}
+
+model Prescription {
+  id            Int          @id @default(autoincrement())
+  doctor        Doctor       @relation(fields: [doctorId], references: [id])
+  doctorId      Int
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  patientId     Int
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId Int?         @unique
+  symptoms      String?
+  diagnosis     String
+  notes         String?
+  createdAt     DateTime     @default(now())
+
+  medicines PrescriptionMedicine[]
+}
+
+model PrescriptionMedicine {
+  id             Int          @id @default(autoincrement())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  prescriptionId Int
+  medicine       Medicine     @relation(fields: [medicineId], references: [id])
+  medicineId     Int
+
+  dosage    String
+  frequency String
+  duration  String
+  purpose   String
+}
+
+model MedicalReport {
+  id            Int          @id @default(autoincrement())
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  patientId     Int
+  doctor        Doctor?      @relation(fields: [doctorId], references: [id])
+  doctorId      Int?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId Int?
+  reportType    String
+  fileUrl       String
+  extractedText String?
+  createdAt     DateTime     @default(now())
+}
+
+model PatientMedicalHistory {
+  id            Int      @id @default(autoincrement())
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  patientId     Int
+  conditionName String
+  details       String
+  startDate     DateTime
+  endDate       DateTime?
+  isChronic     Boolean
+}
+
+model ChatMessage {
+  id           Int       @id @default(autoincrement())
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  patientId    Int
+  messageText  String
+  responseText String
+  messageType  String
+  createdAt    DateTime  @default(now())
+}
+
+model HealthMetric {
+  id            Int          @id @default(autoincrement())
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  patientId     Int
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId Int?
+  metricType    String
+  value         Float
+  unit          String
+  recordedAt    DateTime     @default(now())
+}
+
+model DoctorSignupRequest {
+  id             Int                     @id @default(autoincrement())
+  fullName       String
+  email          String
+  passwordHash   String
+  specialization String
+  licenseNumber  String
+  hospitalName   String
+  status         DoctorSignupRequestStatus @default(PENDING)
+  reviewedAt     DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([email, status])
+  @@index([status])
+}
+
+enum Role {
+  DOCTOR
+  PATIENT
+  ADMIN
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum AppointmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VisitStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+}
+
+enum PaymentMethodType {
+  BKASH
+  ROCKET
+  NAGAD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  AWAITING_CONFIRMATION
+  PAID
+  WAIVED
+}
+
+enum DoctorSignupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
