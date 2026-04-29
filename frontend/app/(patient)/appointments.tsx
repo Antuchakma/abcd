@@ -373,6 +373,7 @@ export default function PatientAppointments() {
   const todayVisits = upcomingAppts.filter((a) => new Date(a.visitDate).toDateString() === todayKey);
   const scheduledVisits = upcomingAppts.filter((a) => new Date(a.visitDate).toDateString() !== todayKey);
   const previousAppts = appts.filter((a) => a.status === 'COMPLETED');
+  const activePayment = paymentDetail?.payment;
 
   return (
     <View style={styles.root}>
@@ -383,7 +384,7 @@ export default function PatientAppointments() {
           style={[styles.tabBtn, tab === 'pending' && styles.tabBtnActive]}
           onPress={() => setTab('pending')}
         >
-          <Text style={[styles.tabText, tab === 'pending' && styles.tabTextActive]}>Pending A</Text>
+          <Text style={[styles.tabText, tab === 'pending' && styles.tabTextActive]}>Pending </Text>
           {pendingReqs.length > 0 && (
             <View style={styles.tabBadge}>
               <Text style={styles.tabBadgeText}>{pendingReqs.length}</Text>
@@ -684,14 +685,14 @@ export default function PatientAppointments() {
                         <Text style={styles.paymentTitle}>Payment</Text>
                         {paymentLoading ? (
                           <ActivityIndicator size="small" color={C.primary} />
-                        ) : !paymentDetail?.payment ? (
+                        ) : !activePayment ? (
                           <Text style={styles.paymentHelp}>No payment requested for this visit.</Text>
                         ) : (
                           <>
-                            <Text style={styles.paymentHelp}>Amount: ৳{paymentDetail.payment.amount}</Text>
-                            <Text style={styles.paymentHelp}>Status: {paymentDetail.payment.status}</Text>
+                            <Text style={styles.paymentHelp}>Amount: ৳{activePayment.amount}</Text>
+                            <Text style={styles.paymentHelp}>Status: {activePayment.status}</Text>
 
-                            {paymentDetail.payment.status === 'PENDING' && (
+                            {activePayment.status === 'PENDING' && (
                               <>
                                 <Text style={[styles.paymentHelp, { marginTop: 8 }]}>Choose payment option:</Text>
 
@@ -723,7 +724,7 @@ export default function PatientAppointments() {
                                     <Text style={styles.methodNumber}>{method.number}</Text>
                                     {selectedMethod?.id === method.id && (
                                       <Text style={styles.paymentHelp}>
-                                        Send tk {paymentDetail.payment.amount} to {method.number}
+                                        Send tk {activePayment.amount} to {method.number}
                                       </Text>
                                     )}
                                   </TouchableOpacity>
@@ -751,11 +752,11 @@ export default function PatientAppointments() {
                               </>
                             )}
 
-                            {paymentDetail.payment.status === 'AWAITING_CONFIRMATION' && (
+                            {activePayment.status === 'AWAITING_CONFIRMATION' && (
                               <Text style={styles.paymentHelp}>Waiting for doctor to click payment received.</Text>
                             )}
 
-                            {paymentDetail.payment.status === 'PAID' && (
+                            {activePayment.status === 'PAID' && (
                               <View style={styles.successPill}>
                                 <Text style={styles.successText}>Payment successful. Doctor confirmed receipt.</Text>
                               </View>
